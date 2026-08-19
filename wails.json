@@ -1,6 +1,6 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "maodevaca",
+  "name": "Mão de Vaca",
   "outputfilename": "maodevaca",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",

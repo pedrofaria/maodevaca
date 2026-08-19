@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo arredondado verde (finanças) -->
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+
+  <!-- Orelhas (atrás da cabeça) -->
+  <ellipse cx="196" cy="500" rx="72" ry="110" fill="#ffffff" transform="rotate(-28 196 500)"/>
+  <ellipse cx="196" cy="500" rx="36" ry="70" fill="#fbcfe8" transform="rotate(-28 196 500)"/>
+  <ellipse cx="828" cy="500" rx="72" ry="110" fill="#ffffff" transform="rotate(28 828 500)"/>
+  <ellipse cx="828" cy="500" rx="36" ry="70" fill="#fbcfe8" transform="rotate(28 828 500)"/>
+
+  <!-- Chifres -->
+  <path d="M320 255 Q285 140 385 95 Q368 190 368 235 Z" fill="#f5e6c8" stroke="#d9c39a" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M704 255 Q739 140 639 95 Q656 190 656 235 Z" fill="#f5e6c8" stroke="#d9c39a" stroke-width="10" stroke-linejoin="round"/>
+
+  <!-- Cabeça -->
+  <circle cx="512" cy="520" r="310" fill="#ffffff"/>
+
+  <!-- Manchas pretas -->
+  <path d="M360 230 Q430 200 520 225 Q600 250 640 330 Q700 420 660 480 Q560 420 470 380 Q360 340 340 300 Q330 260 360 230 Z" fill="#1f2937"/>
+  <path d="M270 620 Q240 560 300 520 Q350 540 340 600 Q330 650 290 660 Z" fill="#1f2937"/>
+  <path d="M470 780 Q520 740 580 790 Q600 830 560 850 Q500 860 460 830 Z" fill="#1f2937"/>
+
+  <!-- Olhos -->
+  <circle cx="400" cy="470" r="30" fill="#111827"/>
+  <circle cx="395" cy="461" r="10" fill="#ffffff"/>
+  <circle cx="624" cy="470" r="30" fill="#111827"/>
+  <circle cx="619" cy="461" r="10" fill="#ffffff"/>
+
+  <!-- Focinho -->
+  <ellipse cx="512" cy="650" rx="130" ry="100" fill="#fda4af"/>
+  <ellipse cx="466" cy="640" rx="16" ry="22" fill="#be123c"/>
+  <ellipse cx="558" cy="640" rx="16" ry="22" fill="#be123c"/>
+  <path d="M480 700 Q512 728 544 700" fill="none" stroke="#be123c" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Moeda de ouro com R$ -->
+  <circle cx="300" cy="800" r="118" fill="#fbbf24" stroke="#d97706" stroke-width="14"/>
+  <text x="300" y="838" font-family="Arial, Helvetica, sans-serif" font-size="108" font-weight="bold" fill="#92400e" text-anchor="middle">R$</text>
+</svg>

@@ -210,7 +210,6 @@ async function confirmRemoveIncome() {
           <span class="text-sm font-semibold w-24 text-center">{{ viewMonth }}/{{ viewYear }}</span>
           <UButton icon="i-lucide-chevron-right" color="neutral" variant="ghost" square @click="nextMonth" />
         </div>
-        <UButton icon="i-lucide-plus" label="Nova entrada" @click="openNewIncome" />
       </div>
     </div>
 
@@ -221,18 +220,15 @@ async function confirmRemoveIncome() {
     <template v-else>
       <!-- ============ PAGAMENTOS ============ -->
       <section class="space-y-3">
-        <div class="rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-          <span class="text-sm font-medium text-neutral-600 dark:text-neutral-300">Pagamentos de {{ viewMonth }}/{{ viewYear }}</span>
-          <span class="text-sm text-neutral-600 dark:text-neutral-300">
-            {{ paidCount }} {{ paidCount === 1 ? 'paga' : 'pagas' }} ·
-            Total pago:
-            <span class="font-bold text-red-600 dark:text-red-400">{{ money(totalPaid) }}</span>
-          </span>
+        <div class="rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <span class="text-sm font-medium text-red-800 dark:text-red-300">Pagamentos de {{ viewMonth }}/{{ viewYear }}</span>
+          <span class="text-sm text-red-600 dark:text-red-400">{{ paidCount }} {{ paidCount === 1 ? 'paga' : 'pagas' }}</span>
+          <span class="text-xl font-bold text-red-700 dark:text-red-400 justify-self-end">{{ money(totalPaid) }}</span>
         </div>
 
         <!-- Grupos -->
-        <div v-for="g in displayGroups" :key="g.id" class="space-y-2">
-          <div class="flex items-center justify-between pt-1">
+        <div v-for="g in displayGroups" :key="g.id" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="flex items-center justify-between pt-1 sm:col-span-2">
             <div class="flex items-center gap-2">
               <UIcon :name="g.icon || 'i-lucide-folder'" class="text-lg" :style="{ color: g.color }" />
               <h3 class="font-semibold text-neutral-800 dark:text-neutral-100">{{ g.name }}</h3>
@@ -279,14 +275,14 @@ async function confirmRemoveIncome() {
               />
             </div>
           </div>
-          <div v-if="!groupActiveAccounts(g.id).length" class="text-xs text-neutral-400 dark:text-neutral-500 py-1 pl-1">
+          <div v-if="!groupActiveAccounts(g.id).length" class="text-xs text-neutral-400 dark:text-neutral-500 py-1 pl-1 sm:col-span-2">
             Nenhuma conta neste grupo.
           </div>
         </div>
 
         <!-- Sem grupo -->
-        <div v-if="ungroupedActive.length" class="space-y-2">
-          <div class="flex items-center justify-between pt-1">
+        <div v-if="ungroupedActive.length" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="flex items-center justify-between pt-1 sm:col-span-2">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-inbox" class="text-lg text-neutral-400 dark:text-neutral-500" />
               <h3 class="font-semibold text-neutral-800 dark:text-neutral-100">Sem grupo</h3>
@@ -336,8 +332,8 @@ async function confirmRemoveIncome() {
         </div>
 
         <!-- Contas inativas -->
-        <div v-if="inactiveAccounts.length" class="space-y-2 pt-2">
-          <h3 class="font-semibold text-neutral-400 dark:text-neutral-500">Contas inativas</h3>
+        <div v-if="inactiveAccounts.length" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+          <h3 class="font-semibold text-neutral-400 dark:text-neutral-500 sm:col-span-2">Contas inativas</h3>
           <div
             v-for="acc in inactiveAccounts"
             :key="acc.id"
@@ -365,12 +361,13 @@ async function confirmRemoveIncome() {
 
       <!-- ============ ENTRADAS ============ -->
       <section class="space-y-3 pt-2">
-        <div class="rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-4 py-3 flex items-center justify-between">
+        <div class="rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <span class="text-sm font-medium text-emerald-800 dark:text-emerald-300">Entradas de {{ viewMonth }}/{{ viewYear }}</span>
-          <span class="text-xl font-bold text-emerald-700 dark:text-emerald-400">{{ money(monthTotal) }}</span>
+          <UButton icon="i-lucide-plus" label="Nova entrada" @click="openNewIncome" />
+          <span class="text-xl font-bold text-emerald-700 dark:text-emerald-400 justify-self-end">{{ money(monthTotal) }}</span>
         </div>
 
-        <div v-if="incomes.length" class="space-y-2">
+        <div v-if="incomes.length" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div
             v-for="i in incomes"
             :key="i.id"

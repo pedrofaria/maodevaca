@@ -1,19 +1,82 @@
-# README
+# Mão de Vaca 🐄
 
-## About
+**Finanças pessoais direto na sua máquina** — app desktop que acompanha suas contas a pagar
+recorrentes, entradas de crédito e o fechamento do mês, com tudo armazenado localmente.
 
-This is the official Wails Vue-TS template.
+<p align="center">
+  <img src="build/appicon.png" alt="Mão de Vaca" width="160">
+</p>
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+Construído com [Wails](https://wails.io) (Go + WebView2) e [Nuxt UI](https://ui.nuxt.com) (Vue 3).
 
-## Live Development
+---
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+## ✨ Funcionalidades
 
-## Building
+- **Contas a pagar recorrentes** — cadastre suas despesas fixas (aluguel, condomínio, assinaturas,
+  mercado...) com valor e dia de vencimento, organizadas em **grupos** (Casa, Cabo Frio, Pessoal...)
+- **Pagamentos mês a mês** — marque o que já foi pago no mês, com valor e data reais; desfaça quando
+  precisar
+- **Fontes de crédito** — cadastre suas entradas recorrentes (salário, aluguéis) com ícone e cor
+- **Entradas** — lance créditos no mês, com descrição opcional
+- **Dashboard** — resumo do mês: entradas, despesas pagas e saldo de um relance
+- **Relatórios** — visão mensal e anual do fluxo de caixa
+- **Dark mode** 🌙 — tema claro/escuro
+- **100% local** — seus dados nunca saem da sua máquina (SQLite)
 
-To build a redistributable, production mode package, use `wails build`.
+## 🛠️ Tecnologias
+
+| Camada | Stack |
+|---|---|
+| Shell | [Wails v2](https://wails.io) (Go 1.25) |
+| Banco de dados | SQLite puro-Go ([modernc.org/sqlite](https://modernc.org/sqlite)) — sem CGO |
+| Frontend | Vue 3 + Vite + TypeScript |
+| UI | [Nuxt UI v4](https://ui.nuxt.com) + Tailwind CSS 4 |
+| Rotas | vue-router (hash mode) |
+
+## 📦 Requisitos
+
+- Go 1.25+
+- Node.js 20+ (frontend)
+- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation)
+- Windows 10/11 com WebView2 (pré-instalado no Windows 11)
+
+## 🚀 Rodando em desenvolvimento
+
+```bash
+wails dev
+```
+
+Isso sobe o Vite com **hot reload** (frontend + backend). Para desenvolver no navegador e chamar
+os métodos Go pelo devtools, acesse `http://localhost:34115`.
+
+## 🔨 Build de produção
+
+```bash
+wails build
+```
+
+Gera o executável em `build/bin/`.
+
+## 🗂️ Estrutura
+
+```
+maodevaca/
+├── app.go            # Handlers do backend (grupos, contas, pagamentos)
+├── incomes.go        # Fontes e entradas de crédito
+├── reports.go        # Agregações mensais/anuais
+├── db.go             # Inicialização do SQLite e schema
+├── models.go         # Structs do domínio
+└── frontend/
+    ├── src/views/    # Dashboard, Contas, Transações, Fontes, Relatórios
+    ├── src/lib/      # api (bridge), format, state, types
+    └── src/router.ts # Rotas
+```
+
+## 💾 Dados
+
+O banco SQLite fica em `%APPDATA%\maodevaca\maodevaca.db` — sem conta, sem nuvem, sem sincronização.
+
+## 📄 Licença
+
+[MIT](LICENSE) © 2026 Pedro Faria
