@@ -47,6 +47,17 @@ jobs:
       - name: Instala a CLI do Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
 
+      # O Wails v2.10 NÃO baixa o NSIS sozinho: sem "makensis" no PATH ele apenas
+      # loga um warning e pula o instalador (build "passa" sem gerar nada).
+      - name: Instala o NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis -y --no-progress
+          # Garante o PATH caso o pacote não o registre sozinho
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          makensis /VERSION
+
       - name: Dependências do Linux (GTK/WebKit)
         if: runner.os == 'Linux'
         run: |
