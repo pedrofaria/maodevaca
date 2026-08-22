@@ -91,9 +91,11 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
-          # Garante o PATH caso o pacote não o registre sozinho
+          # Garante o PATH caso o pacote não o registre sozinho. Obs.: o GITHUB_PATH
+          # só vale nas etapas SEGUINTES — por isso a verificação abaixo usa o caminho
+          # completo (o build `wails -nsis` já roda depois e pega o PATH atualizado).
           echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          makensis /VERSION
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /VERSION
 
       - name: Dependências do Linux (GTK/WebKit)
         if: runner.os == 'Linux'
