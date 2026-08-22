@@ -55,11 +55,10 @@ go test ./...    # testes do backend (backend_test.go)
 
 **Frontend:**
 - `frontend/src/views/` — uma view por rota:
-  - `DashboardView.vue` — resumo do mês
+  - `ReportsView.vue` — visualização mensal/anual (tela inicial `/`)
   - `ContasView.vue` — CRUD de contas e grupos (tela de GERENCIAMENTO)
   - `TransacoesView.vue` — operacional: pagar contas + lançar entradas do mês
   - `FontesView.vue` — CRUD de fontes de crédito (gerenciamento)
-  - `ReportsView.vue` — visualização mensal/anual
 - `frontend/src/lib/` — `api.ts` (bridge tipada), `types.ts`, `format.ts` (money/date pt-BR),
   `state.ts` (mês/ano em exibição), `icons.ts`, `colorMode.ts`
 - `frontend/src/router.ts` — rotas hash (`#/contas`, `#/transacoes`, ...)

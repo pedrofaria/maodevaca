@@ -3,9 +3,9 @@ import type { RouteRecordRaw } from 'vue-router'
 export const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'dashboard',
-    component: () => import('./views/DashboardView.vue'),
-    meta: { title: 'Dashboard' }
+    name: 'reports',
+    component: () => import('./views/ReportsView.vue'),
+    meta: { title: 'Visualização' }
   },
   {
     path: '/contas',
@@ -24,12 +24,6 @@ export const routes: RouteRecordRaw[] = [
     name: 'sources',
     component: () => import('./views/FontesView.vue'),
     meta: { title: 'Fontes' }
-  },
-  {
-    path: '/relatorios',
-    name: 'reports',
-    component: () => import('./views/ReportsView.vue'),
-    meta: { title: 'Visualização' }
   },
   {
     path: '/:pathMatch(.*)*',
