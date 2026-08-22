@@ -5,13 +5,13 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "maodevaca"
+    !define INFO_PROJECTNAME "Mão de Vaca"
 !endif
 !ifndef INFO_COMPANYNAME
-    !define INFO_COMPANYNAME "maodevaca"
+    !define INFO_COMPANYNAME "Mão de Vaca"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "maodevaca"
+    !define INFO_PRODUCTNAME "Mão de Vaca"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "1.0.0"

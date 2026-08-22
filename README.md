@@ -24,6 +24,22 @@ Construído com [Wails](https://wails.io) (Go + WebView2) e [Nuxt UI](https://ui
 - **Dark mode** 🌙 — tema claro/escuro
 - **100% local** — seus dados nunca saem da sua máquina (SQLite)
 
+---
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/img_dashboard.jpg" alt="Dashboard" width="800">
+  <br>
+  <em>Dashboard — resumo do mês</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/img_transactions.jpg" alt="Transações" width="800">
+  <br>
+  <em>Transações — pagar contas e lançar entradas</em>
+</p>
+
 ## 🛠️ Tecnologias
 
 | Camada | Stack |

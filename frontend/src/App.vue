@@ -10,13 +10,12 @@ type NavItem =
   | { type: 'divider' }
 
 const navItems: NavItem[] = [
-  { type: 'link', to: '/', label: 'Dashboard', icon: 'i-lucide-layout-dashboard' },
+  { type: 'link', to: '/', label: 'Dashboard', icon: 'i-lucide-chart-bar' },
+  { type: 'divider' },
   { type: 'link', to: '/contas', label: 'Contas e grupos', icon: 'i-lucide-folder-tree' },
   { type: 'link', to: '/fontes', label: 'Fontes', icon: 'i-lucide-tags' },
   { type: 'divider' },
-  { type: 'link', to: '/transacoes', label: 'Transações', icon: 'i-lucide-arrow-left-right' },
-  { type: 'divider' },
-  { type: 'link', to: '/relatorios', label: 'Visualização', icon: 'i-lucide-chart-bar' }
+  { type: 'link', to: '/transacoes', label: 'Transações', icon: 'i-lucide-arrow-left-right' }
 ]
 
 function isActive(to: string): boolean {
