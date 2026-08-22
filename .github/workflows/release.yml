@@ -16,6 +16,9 @@ jobs:
     # Forçar HTTP/1.1 no cliente HTTP do Go elimina a maioria dessas falhas.
     env:
       GODEBUG: http2client=0
+      # Evita OOM no build do frontend (Vite/Vue) nos runners — recomendação
+      # oficial da doc de cross-platform build do Wails.
+      NODE_OPTIONS: "--max-old-space-size=4096"
     strategy:
       fail-fast: false
       matrix:
