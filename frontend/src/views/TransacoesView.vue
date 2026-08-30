@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errMsg } from '../lib/api'
-import { money, todayISO } from '../lib/format'
+import { dateBR, money, todayISO } from '../lib/format'
 import { nextMonth, prevMonth, viewMonth, viewYear } from '../lib/state'
 import type { Account, Group, Income, IncomeSource, Payment } from '../lib/types'
 
@@ -35,6 +35,20 @@ const paidDate = computed(() => new Map(payments.value.map(p => [p.accountId, p.
 function isFuturePaid(accountId: number): boolean {
   const on = paidDate.value.get(accountId)
   return !!on && on > todayISO()
+}
+
+// Valor sugerido por conta percentual no mês em exibição (p/ exibir mesmo sem pagamento).
+const suggestedAmount = ref<Map<number, number>>(new Map())
+
+async function loadSuggested() {
+  const m = new Map<number, number>()
+  const percentAccs = accounts.value.filter(a => a.type === 'percent')
+  await Promise.all(percentAccs.map(async (a) => {
+    try {
+      m.set(a.id, await api.getSuggestedPayment(a.id, viewYear.value, viewMonth.value))
+    } catch { /* conta fica sem valor sugerido */ }
+  }))
+  suggestedAmount.value = m
 }
 
 const activeAccounts = computed(() => accounts.value.filter(a => a.active))
@@ -75,6 +89,7 @@ async function load() {
     payments.value = pays ?? []
     incomes.value = inc ?? []
     sources.value = src ?? []
+    await loadSuggested()
   } catch (e) {
     error.value = errMsg(e)
   } finally {
@@ -274,7 +289,7 @@ async function confirmRemoveIncome() {
               <template v-if="paidSet.has(acc.id)">
                 <span class="font-semibold text-sm text-red-600 dark:text-red-400">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton
-                  :label="'Pago em ' + (paidDate.get(acc.id) ?? '')"
+                  :label="'Pago em ' + dateBR(paidDate.get(acc.id) ?? '')"
                   icon="i-lucide-check"
                   color="success"
                   variant="soft"
@@ -282,8 +297,9 @@ async function confirmRemoveIncome() {
                   @click="unpay(acc)"
                 />
               </template>
+              <span v-if="!paidSet.has(acc.id) && acc.type === 'percent'" class="font-semibold text-sm text-neutral-500 dark:text-neutral-400">{{ money(suggestedAmount.get(acc.id) ?? 0) }}</span>
               <UButton
-                v-else
+                v-if="!paidSet.has(acc.id)"
                 icon="i-lucide-circle-check"
                 label="Pagar"
                 color="primary"
@@ -329,7 +345,7 @@ async function confirmRemoveIncome() {
               <template v-if="paidSet.has(acc.id)">
                 <span class="font-semibold text-sm text-red-600 dark:text-red-400">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton
-                  :label="'Pago em ' + (paidDate.get(acc.id) ?? '')"
+                  :label="'Pago em ' + dateBR(paidDate.get(acc.id) ?? '')"
                   icon="i-lucide-check"
                   color="success"
                   variant="soft"
@@ -337,8 +353,9 @@ async function confirmRemoveIncome() {
                   @click="unpay(acc)"
                 />
               </template>
+              <span v-if="!paidSet.has(acc.id) && acc.type === 'percent'" class="font-semibold text-sm text-neutral-500 dark:text-neutral-400">{{ money(suggestedAmount.get(acc.id) ?? 0) }}</span>
               <UButton
-                v-else
+                v-if="!paidSet.has(acc.id)"
                 icon="i-lucide-circle-check"
                 label="Pagar"
                 color="primary"
@@ -372,7 +389,7 @@ async function confirmRemoveIncome() {
                 <span class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton icon="i-lucide-check" label="Pago" color="success" variant="soft" size="sm" @click="unpay(acc)" />
               </template>
-              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ acc.type === 'percent' ? acc.percent + '%' : money(acc.amount) }}</span>
+              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ acc.type === 'percent' ? money(suggestedAmount.get(acc.id) ?? 0) : money(acc.amount) }}</span>
             </div>
           </div>
         </div>
@@ -401,7 +418,7 @@ async function confirmRemoveIncome() {
               </div>
               <div class="min-w-0">
                 <p class="font-medium text-neutral-900 dark:text-neutral-100 truncate">{{ i.sourceName }}</p>
-                <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ i.date }}<span v-if="i.description"> · {{ i.description }}</span></p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ dateBR(i.date) }}<span v-if="i.description"> · {{ i.description }}</span></p>
               </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">

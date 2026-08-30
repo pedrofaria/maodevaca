@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errMsg } from '../lib/api'
-import { MONTHS, money } from '../lib/format'
+import { MONTHS, dateBR, money } from '../lib/format'
 import type { MonthSummary, YearSummary } from '../lib/types'
 
 const tab = ref<'mes' | 'ano'>('mes')
@@ -143,7 +143,7 @@ function barHeight(v: number): string {
               <div v-for="i in monthSummary.incomes" :key="i.id" class="flex items-center justify-between py-2">
                 <div>
                   <p class="font-medium text-sm">{{ i.sourceName }}<span v-if="i.description"> · {{ i.description }}</span></p>
-                  <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ i.date }}</p>
+                  <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ dateBR(i.date) }}</p>
                 </div>
                 <span class="font-semibold text-emerald-600 text-sm">{{ money(i.amount) }}</span>
               </div>
@@ -156,7 +156,7 @@ function barHeight(v: number): string {
               <div v-for="p in monthSummary.payments" :key="p.id" class="flex items-center justify-between py-2">
                 <div>
                   <p class="font-medium text-sm">{{ p.accountName }}</p>
-                  <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ p.paidOn }}</p>
+                  <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ dateBR(p.paidOn) }}</p>
                 </div>
                 <span class="font-semibold text-red-600 text-sm">{{ money(p.amount) }}</span>
               </div>
