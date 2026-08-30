@@ -86,11 +86,21 @@ onMounted(load)
 watch([viewYear, viewMonth], load)
 
 // ---------- pagamento ----------
-function openPay(acc: Account) {
+async function openPay(acc: Account) {
   payingAccount.value = acc
-  // Valor sugerido = valor cadastrado da conta.
-  payForm.value = { amount: acc.amount, paidOn: todayISO() }
+  payForm.value = { amount: 0, paidOn: todayISO() }
   payErr.value = ''
+  if (acc.type === 'percent') {
+    // Valor sugerido = percentual das entradas das fontes vinculadas no mês.
+    try {
+      payForm.value.amount = await api.getSuggestedPayment(acc.id, viewYear.value, viewMonth.value)
+    } catch (e) {
+      payErr.value = errMsg(e)
+    }
+  } else {
+    // Valor sugerido = valor cadastrado da conta.
+    payForm.value.amount = acc.amount
+  }
   payModalOpen.value = true
 }
 
@@ -362,7 +372,7 @@ async function confirmRemoveIncome() {
                 <span class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton icon="i-lucide-check" label="Pago" color="success" variant="soft" size="sm" @click="unpay(acc)" />
               </template>
-              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ money(acc.amount) }}</span>
+              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ acc.type === 'percent' ? acc.percent + '%' : money(acc.amount) }}</span>
             </div>
           </div>
         </div>
@@ -419,6 +429,9 @@ async function confirmRemoveIncome() {
           </div>
           <p class="text-xs text-neutral-400 dark:text-neutral-500">
             Registrará o pagamento de <b>{{ payingAccount?.name }}</b> no mês {{ viewMonth }}/{{ viewYear }}.
+          </p>
+          <p v-if="payingAccount?.type === 'percent'" class="text-xs text-neutral-500 dark:text-neutral-400 rounded-lg bg-neutral-100 dark:bg-neutral-800 p-2">
+            Conta <b>percentual</b>: valor sugerido de {{ payingAccount.percent }}% da soma das entradas das fontes vinculadas. Ajuste se necessário.
           </p>
         </div>
       </template>

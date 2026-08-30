@@ -40,6 +40,47 @@ func initDB() error {
 	if err := migrate(); err != nil {
 		return fmt.Errorf("migrando esquema: %w", err)
 	}
+	if err := migrateAccountColumns(); err != nil {
+		return fmt.Errorf("migrando colunas de contas: %w", err)
+	}
+	return nil
+}
+
+// migrateAccountColumns adiciona as colunas novas da tabela accounts em bancos
+// já existentes (SQLite não suporta ADD COLUMN IF NOT EXISTS).
+func migrateAccountColumns() error {
+	cols := map[string]bool{}
+	rows, err := db.Query(`PRAGMA table_info(accounts)`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, ctype string
+		var dflt any
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			rows.Close()
+			return err
+		}
+		cols[name] = true
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !cols["type"] {
+		if _, err := db.Exec(`ALTER TABLE accounts ADD COLUMN type TEXT NOT NULL DEFAULT 'fixed'`); err != nil {
+			return err
+		}
+	}
+	if !cols["percent"] {
+		if _, err := db.Exec(`ALTER TABLE accounts ADD COLUMN percent REAL NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -63,7 +104,15 @@ CREATE TABLE IF NOT EXISTS accounts (
     due_day    INTEGER NOT NULL DEFAULT 1,
     active     INTEGER NOT NULL DEFAULT 1,
     notes      TEXT NOT NULL DEFAULT '',
+    type       TEXT NOT NULL DEFAULT 'fixed',
+    percent    REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS account_sources (
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    source_id  INTEGER NOT NULL REFERENCES income_sources(id) ON DELETE CASCADE,
+    PRIMARY KEY (account_id, source_id)
 );
 
 CREATE TABLE IF NOT EXISTS payments (

@@ -11,6 +11,8 @@ type Group struct {
 }
 
 // Account representa uma conta recorrente (despesa fixa mensal).
+// Type pode ser "fixed" (valor fixo em Amount) ou "percent"
+// (valor = Percent% da soma das entradas das fontes em SourceIDs).
 type Account struct {
 	ID        int64   `json:"id"`
 	GroupID   *int64  `json:"groupId"`
@@ -20,6 +22,9 @@ type Account struct {
 	DueDay    int     `json:"dueDay"`
 	Active    bool    `json:"active"`
 	Notes     string  `json:"notes"`
+	Type      string  `json:"type"`
+	Percent   float64 `json:"percent"`
+	SourceIDs []int64 `json:"sourceIds"`
 	CreatedAt string  `json:"createdAt"`
 }
 

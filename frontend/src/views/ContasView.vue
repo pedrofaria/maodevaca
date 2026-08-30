@@ -3,17 +3,18 @@ import { computed, onMounted, ref } from 'vue'
 import { api, errMsg } from '../lib/api'
 import { money } from '../lib/format'
 import { COLOR_OPTIONS, ICON_OPTIONS } from '../lib/icons'
-import type { Account, Group } from '../lib/types'
+import type { Account, Group, IncomeSource } from '../lib/types'
 
 const loading = ref(true)
 const error = ref('')
 const accounts = ref<Account[]>([])
 const groups = ref<Group[]>([])
+const sources = ref<IncomeSource[]>([])
 
 // Modal de conta
 const accountModalOpen = ref(false)
 const editingAccount = ref<Account | null>(null)
-const accountForm = ref({ name: '', amount: 0, dueDay: 1, groupId: null as number | null, notes: '', active: true })
+const accountForm = ref({ name: '', amount: 0, percent: 0, dueDay: 1, groupId: null as number | null, notes: '', active: true, type: 'fixed' as 'fixed' | 'percent', sourceIds: [] as number[] })
 const accountSaving = ref(false)
 const accountErr = ref('')
 
@@ -35,9 +36,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [accs, grps] = await Promise.all([api.getAccounts(), api.getGroups()])
+    const [accs, grps, srcs] = await Promise.all([api.getAccounts(), api.getGroups(), api.getIncomeSources()])
     accounts.value = accs ?? []
     groups.value = grps ?? []
+    sources.value = srcs ?? []
   } catch (e) {
     error.value = errMsg(e)
   } finally {
@@ -48,32 +50,70 @@ async function load() {
 onMounted(load)
 
 // ---------- conta ----------
+const typeOptions = [
+  { label: 'Fixo', value: 'fixed' as const },
+  { label: 'Percentual', value: 'percent' as const }
+]
+
+function toggleSource(id: number, on: boolean) {
+  const arr = accountForm.value.sourceIds
+  const i = arr.indexOf(id)
+  if (on && i < 0) arr.push(id)
+  else if (!on && i >= 0) arr.splice(i, 1)
+}
+
+const sourceNameById = computed(() => new Map(sources.value.map(s => [s.id, s.name])))
+
+// Ex.: "10% de Salário, Aluguel"
+function percentDesc(acc: Account): string {
+  const names = (acc.sourceIds ?? []).map(id => sourceNameById.value.get(id)).filter((n): n is string => !!n)
+  return `${acc.percent}% de ${names.join(', ') || '—'}`
+}
+
 function openNewAccount(groupId: number | null = null) {
   editingAccount.value = null
-  accountForm.value = { name: '', amount: 0, dueDay: 1, groupId, notes: '', active: true }
+  accountForm.value = { name: '', amount: 0, percent: 0, dueDay: 1, groupId, notes: '', active: true, type: 'fixed', sourceIds: [] }
   accountErr.value = ''
   accountModalOpen.value = true
 }
 
 function openEditAccount(acc: Account) {
   editingAccount.value = acc
-  accountForm.value = { name: acc.name, amount: acc.amount, dueDay: acc.dueDay, groupId: acc.groupId, notes: acc.notes, active: acc.active }
+  accountForm.value = {
+    name: acc.name,
+    amount: acc.amount,
+    percent: acc.percent,
+    dueDay: acc.dueDay,
+    groupId: acc.groupId,
+    notes: acc.notes,
+    active: acc.active,
+    type: acc.type || 'fixed',
+    sourceIds: [...(acc.sourceIds ?? [])]
+  }
   accountErr.value = ''
   accountModalOpen.value = true
 }
 
 async function saveAccount() {
   accountErr.value = ''
-  if (!accountForm.value.name.trim()) { accountErr.value = 'Informe o nome da conta.'; return }
-  if (!(accountForm.value.amount > 0)) { accountErr.value = 'Informe um valor maior que zero.'; return }
-  if (accountForm.value.dueDay < 1 || accountForm.value.dueDay > 31) { accountErr.value = 'Dia de vencimento deve estar entre 1 e 31.'; return }
+  const f = accountForm.value
+  if (!f.name.trim()) { accountErr.value = 'Informe o nome da conta.'; return }
+  if (f.type === 'percent') {
+    if (!(f.percent > 0)) { accountErr.value = 'Informe a porcentagem.'; return }
+    if (!f.sourceIds.length) { accountErr.value = 'Selecione ao menos uma fonte.'; return }
+    f.amount = 0
+  } else {
+    if (!(f.amount > 0)) { accountErr.value = 'Informe um valor maior que zero.'; return }
+    f.percent = 0
+    f.sourceIds = []
+  }
+  if (f.dueDay < 1 || f.dueDay > 31) { accountErr.value = 'Dia de vencimento deve estar entre 1 e 31.'; return }
   accountSaving.value = true
   try {
-    const f = accountForm.value
     if (editingAccount.value) {
-      await api.updateAccount(editingAccount.value.id, f.name, f.amount, f.dueDay, f.groupId, f.active, f.notes)
+      await api.updateAccount(editingAccount.value.id, f.name, f.amount, f.dueDay, f.groupId, f.active, f.notes, f.type, f.percent, f.sourceIds)
     } else {
-      await api.createAccount(f.name, f.amount, f.dueDay, f.groupId, f.notes)
+      await api.createAccount(f.name, f.amount, f.dueDay, f.groupId, f.notes, f.type, f.percent, f.sourceIds)
     }
     accountModalOpen.value = false
     await load()
@@ -184,10 +224,11 @@ const groupOptions = computed(() => groups.value.map(g => ({ label: g.name, valu
           >
             <div class="min-w-0">
               <p class="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">{{ acc.name }}</p>
-              <p class="text-xs text-neutral-400 dark:text-neutral-500">Vence dia {{ acc.dueDay }}<span v-if="!acc.active"> · inativa</span><span v-if="acc.notes"> · {{ acc.notes }}</span></p>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500"><span v-if="acc.type === 'percent'">{{ percentDesc(acc) }} · </span>Vence dia {{ acc.dueDay }}<span v-if="!acc.active"> · inativa</span><span v-if="acc.notes"> · {{ acc.notes }}</span></p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ money(acc.amount) }}</span>
+              <span v-if="acc.type === 'percent'" class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ acc.percent }}%</span>
+              <span v-else class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ money(acc.amount) }}</span>
               <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" @click="openEditAccount(acc)" />
               <UButton icon="i-lucide-trash" color="neutral" variant="ghost" size="sm" @click="removeAccount(acc)" />
             </div>
@@ -216,10 +257,11 @@ const groupOptions = computed(() => groups.value.map(g => ({ label: g.name, valu
           >
             <div class="min-w-0">
               <p class="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">{{ acc.name }}</p>
-              <p class="text-xs text-neutral-400 dark:text-neutral-500">Vence dia {{ acc.dueDay }}<span v-if="!acc.active"> · inativa</span><span v-if="acc.notes"> · {{ acc.notes }}</span></p>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500"><span v-if="acc.type === 'percent'">{{ percentDesc(acc) }} · </span>Vence dia {{ acc.dueDay }}<span v-if="!acc.active"> · inativa</span><span v-if="acc.notes"> · {{ acc.notes }}</span></p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-              <span class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ money(acc.amount) }}</span>
+              <span v-if="acc.type === 'percent'" class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ acc.percent }}%</span>
+              <span v-else class="font-semibold text-sm text-neutral-900 dark:text-neutral-100">{{ money(acc.amount) }}</span>
               <UButton icon="i-lucide-pencil" color="neutral" variant="ghost" size="sm" @click="openEditAccount(acc)" />
               <UButton icon="i-lucide-trash" color="neutral" variant="ghost" size="sm" @click="removeAccount(acc)" />
             </div>
@@ -237,16 +279,48 @@ const groupOptions = computed(() => groups.value.map(g => ({ label: g.name, valu
         <div class="space-y-4">
           <UAlert v-if="accountErr" color="error" :title="accountErr" icon="i-lucide-alert-circle" />
           <UFormField label="Nome da conta" required>
-            <UInput v-model="accountForm.name" placeholder="Ex.: Energia, Internet, Aluguel" />
+            <UInput v-model="accountForm.name" placeholder="Ex.: Energia, Internet, Dízimo" />
           </UFormField>
-          <div class="grid grid-cols-2 gap-4">
-            <UFormField label="Valor (R$)" required>
-              <UInput v-model.number="accountForm.amount" type="number" min="0" step="0.01" placeholder="0,00" />
+          <UFormField label="Tipo" required>
+            <USelect v-model="accountForm.type" :items="typeOptions" />
+          </UFormField>
+
+          <template v-if="accountForm.type === 'fixed'">
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField label="Valor (R$)" required>
+                <UInput v-model.number="accountForm.amount" type="number" min="0" step="0.01" placeholder="0,00" />
+              </UFormField>
+              <UFormField label="Vence no dia" required>
+                <UInput v-model.number="accountForm.dueDay" type="number" min="1" max="31" />
+              </UFormField>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="grid grid-cols-2 gap-4">
+              <UFormField label="Valor (%)" required>
+                <UInput v-model.number="accountForm.percent" type="number" min="0" step="0.01" placeholder="Ex.: 10" />
+              </UFormField>
+              <UFormField label="Vence no dia" required>
+                <UInput v-model.number="accountForm.dueDay" type="number" min="1" max="31" />
+              </UFormField>
+            </div>
+            <UFormField label="Fontes (aplicado sobre a soma das entradas)" required>
+              <div class="space-y-2 rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
+                <UCheckbox
+                  v-for="s in sources"
+                  :key="s.id"
+                  :model-value="accountForm.sourceIds.includes(s.id)"
+                  :label="s.name"
+                  @update:model-value="(v: boolean | undefined) => toggleSource(s.id, !!v)"
+                />
+                <p v-if="!sources.length" class="text-xs text-neutral-400 dark:text-neutral-500">
+                  Nenhuma fonte cadastrada. Crie fontes no menu <b>Fontes</b> primeiro.
+                </p>
+              </div>
             </UFormField>
-            <UFormField label="Vence no dia" required>
-              <UInput v-model.number="accountForm.dueDay" type="number" min="1" max="31" />
-            </UFormField>
-          </div>
+          </template>
+
           <UFormField label="Grupo">
             <USelect v-model="accountForm.groupId" :items="groupOptions" placeholder="Sem grupo" />
           </UFormField>
