@@ -9,6 +9,9 @@ export namespace main {
 	    dueDay: number;
 	    active: boolean;
 	    notes: string;
+	    type: string;
+	    percent: number;
+	    sourceIds: number[];
 	    createdAt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -25,6 +28,9 @@ export namespace main {
 	        this.dueDay = source["dueDay"];
 	        this.active = source["active"];
 	        this.notes = source["notes"];
+	        this.type = source["type"];
+	        this.percent = source["percent"];
+	        this.sourceIds = source["sourceIds"];
 	        this.createdAt = source["createdAt"];
 	    }
 	}

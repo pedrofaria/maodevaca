@@ -18,6 +18,9 @@ export interface Account {
   dueDay: number
   active: boolean
   notes: string
+  type: 'fixed' | 'percent'
+  percent: number
+  sourceIds: number[]
   createdAt: string
 }
 

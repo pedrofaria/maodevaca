@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errMsg } from '../lib/api'
-import { money, todayISO } from '../lib/format'
+import { dateBR, money, todayISO } from '../lib/format'
 import { nextMonth, prevMonth, viewMonth, viewYear } from '../lib/state'
 import type { Account, Group, Income, IncomeSource, Payment } from '../lib/types'
 
@@ -30,6 +30,26 @@ const incomeErr = ref('')
 const paidSet = computed(() => new Set(payments.value.map(p => p.accountId)))
 const paidAmount = computed(() => new Map(payments.value.map(p => [p.accountId, p.amount] as const)))
 const paidDate = computed(() => new Map(payments.value.map(p => [p.accountId, p.paidOn] as const)))
+
+// Pagamento marcado com data no futuro: recebe destaque amarelo.
+function isFuturePaid(accountId: number): boolean {
+  const on = paidDate.value.get(accountId)
+  return !!on && on > todayISO()
+}
+
+// Valor sugerido por conta percentual no mês em exibição (p/ exibir mesmo sem pagamento).
+const suggestedAmount = ref<Map<number, number>>(new Map())
+
+async function loadSuggested() {
+  const m = new Map<number, number>()
+  const percentAccs = accounts.value.filter(a => a.type === 'percent')
+  await Promise.all(percentAccs.map(async (a) => {
+    try {
+      m.set(a.id, await api.getSuggestedPayment(a.id, viewYear.value, viewMonth.value))
+    } catch { /* conta fica sem valor sugerido */ }
+  }))
+  suggestedAmount.value = m
+}
 
 const activeAccounts = computed(() => accounts.value.filter(a => a.active))
 const inactiveAccounts = computed(() => accounts.value.filter(a => !a.active))
@@ -69,6 +89,7 @@ async function load() {
     payments.value = pays ?? []
     incomes.value = inc ?? []
     sources.value = src ?? []
+    await loadSuggested()
   } catch (e) {
     error.value = errMsg(e)
   } finally {
@@ -80,11 +101,21 @@ onMounted(load)
 watch([viewYear, viewMonth], load)
 
 // ---------- pagamento ----------
-function openPay(acc: Account) {
+async function openPay(acc: Account) {
   payingAccount.value = acc
-  // Valor sugerido = valor cadastrado da conta.
-  payForm.value = { amount: acc.amount, paidOn: todayISO() }
+  payForm.value = { amount: 0, paidOn: todayISO() }
   payErr.value = ''
+  if (acc.type === 'percent') {
+    // Valor sugerido = percentual das entradas das fontes vinculadas no mês.
+    try {
+      payForm.value.amount = await api.getSuggestedPayment(acc.id, viewYear.value, viewMonth.value)
+    } catch (e) {
+      payErr.value = errMsg(e)
+    }
+  } else {
+    // Valor sugerido = valor cadastrado da conta.
+    payForm.value.amount = acc.amount
+  }
   payModalOpen.value = true
 }
 
@@ -222,7 +253,7 @@ async function confirmRemoveIncome() {
       <section class="space-y-3">
         <div class="rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <span class="text-sm font-medium text-red-800 dark:text-red-300">Pagamentos de {{ viewMonth }}/{{ viewYear }}</span>
-          <span class="text-sm text-red-600 dark:text-red-400">{{ paidCount }} {{ paidCount === 1 ? 'paga' : 'pagas' }}</span>
+          <span class="text-sm text-red-600 dark:text-red-400">{{ paidCount }} de {{ activeAccounts.length }} {{ activeAccounts.length === 1 ? 'paga' : 'pagas' }}</span>
           <span class="text-xl font-bold text-red-700 dark:text-red-400 justify-self-end">{{ money(totalPaid) }}</span>
         </div>
 
@@ -239,7 +270,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in groupActiveAccounts(g.id)"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-white border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div
@@ -257,7 +289,7 @@ async function confirmRemoveIncome() {
               <template v-if="paidSet.has(acc.id)">
                 <span class="font-semibold text-sm text-red-600 dark:text-red-400">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton
-                  :label="'Pago em ' + (paidDate.get(acc.id) ?? '')"
+                  :label="'Pago em ' + dateBR(paidDate.get(acc.id) ?? '')"
                   icon="i-lucide-check"
                   color="success"
                   variant="soft"
@@ -265,8 +297,9 @@ async function confirmRemoveIncome() {
                   @click="unpay(acc)"
                 />
               </template>
+              <span v-if="!paidSet.has(acc.id) && acc.type === 'percent'" class="font-semibold text-sm text-neutral-500 dark:text-neutral-400">{{ money(suggestedAmount.get(acc.id) ?? 0) }}</span>
               <UButton
-                v-else
+                v-if="!paidSet.has(acc.id)"
                 icon="i-lucide-circle-check"
                 label="Pagar"
                 color="primary"
@@ -293,7 +326,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in ungroupedActive"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-white border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div
@@ -311,7 +345,7 @@ async function confirmRemoveIncome() {
               <template v-if="paidSet.has(acc.id)">
                 <span class="font-semibold text-sm text-red-600 dark:text-red-400">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton
-                  :label="'Pago em ' + (paidDate.get(acc.id) ?? '')"
+                  :label="'Pago em ' + dateBR(paidDate.get(acc.id) ?? '')"
                   icon="i-lucide-check"
                   color="success"
                   variant="soft"
@@ -319,8 +353,9 @@ async function confirmRemoveIncome() {
                   @click="unpay(acc)"
                 />
               </template>
+              <span v-if="!paidSet.has(acc.id) && acc.type === 'percent'" class="font-semibold text-sm text-neutral-500 dark:text-neutral-400">{{ money(suggestedAmount.get(acc.id) ?? 0) }}</span>
               <UButton
-                v-else
+                v-if="!paidSet.has(acc.id)"
                 icon="i-lucide-circle-check"
                 label="Pagar"
                 color="primary"
@@ -337,7 +372,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in inactiveAccounts"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 opacity-60"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3 opacity-60"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-neutral-50 border-neutral-200 dark:bg-neutral-800/50 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="grid place-items-center size-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 shrink-0">
@@ -353,7 +389,7 @@ async function confirmRemoveIncome() {
                 <span class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ money(paidAmount.get(acc.id)) }}</span>
                 <UButton icon="i-lucide-check" label="Pago" color="success" variant="soft" size="sm" @click="unpay(acc)" />
               </template>
-              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ money(acc.amount) }}</span>
+              <span v-else class="font-semibold text-sm text-neutral-400 dark:text-neutral-500">{{ acc.type === 'percent' ? money(suggestedAmount.get(acc.id) ?? 0) : money(acc.amount) }}</span>
             </div>
           </div>
         </div>
@@ -382,7 +418,7 @@ async function confirmRemoveIncome() {
               </div>
               <div class="min-w-0">
                 <p class="font-medium text-neutral-900 dark:text-neutral-100 truncate">{{ i.sourceName }}</p>
-                <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ i.date }}<span v-if="i.description"> · {{ i.description }}</span></p>
+                <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ dateBR(i.date) }}<span v-if="i.description"> · {{ i.description }}</span></p>
               </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">
@@ -410,6 +446,9 @@ async function confirmRemoveIncome() {
           </div>
           <p class="text-xs text-neutral-400 dark:text-neutral-500">
             Registrará o pagamento de <b>{{ payingAccount?.name }}</b> no mês {{ viewMonth }}/{{ viewYear }}.
+          </p>
+          <p v-if="payingAccount?.type === 'percent'" class="text-xs text-neutral-500 dark:text-neutral-400 rounded-lg bg-neutral-100 dark:bg-neutral-800 p-2">
+            Conta <b>percentual</b>: valor sugerido de {{ payingAccount.percent }}% da soma das entradas das fontes vinculadas. Ajuste se necessário.
           </p>
         </div>
       </template>

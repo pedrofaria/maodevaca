@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // App é a estrutura exposta ao frontend via bindings do Wails.
@@ -83,7 +84,9 @@ func (a *App) DeleteGroup(id int64) error {
 func (a *App) GetAccounts() ([]Account, error) {
 	rows, err := db.Query(`
 		SELECT acc.id, acc.group_id, COALESCE(g.name, ''), acc.name, acc.amount,
-		       acc.due_day, acc.active, acc.notes, acc.created_at
+		       acc.due_day, acc.active, acc.notes, acc.created_at,
+		       acc.type, acc.percent,
+		       COALESCE((SELECT GROUP_CONCAT(source_id) FROM account_sources WHERE account_id = acc.id), '')
 		FROM accounts acc
 		LEFT JOIN groups g ON g.id = acc.group_id
 		ORDER BY acc.active DESC, COALESCE(g.sort_order, 999), acc.due_day ASC, acc.name ASC`)
@@ -96,45 +99,119 @@ func (a *App) GetAccounts() ([]Account, error) {
 	for rows.Next() {
 		var a Account
 		var active int
+		var sourceCSV string
 		if err := rows.Scan(&a.ID, &a.GroupID, &a.GroupName, &a.Name, &a.Amount,
-			&a.DueDay, &active, &a.Notes, &a.CreatedAt); err != nil {
+			&a.DueDay, &active, &a.Notes, &a.CreatedAt, &a.Type, &a.Percent, &sourceCSV); err != nil {
 			return nil, err
 		}
 		a.Active = active == 1
+		a.SourceIDs = parseSourceIDs(sourceCSV)
 		accounts = append(accounts, a)
 	}
 	return accounts, rows.Err()
 }
 
+// parseSourceIDs converte uma string "1,2,3" (GROUP_CONCAT) em []int64.
+func parseSourceIDs(csv string) []int64 {
+	if csv == "" {
+		return []int64{}
+	}
+	var ids []int64
+	for _, part := range strings.Split(csv, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		var id int64
+		if _, err := fmt.Sscanf(part, "%d", &id); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// setAccountSources substitui as fontes vinculadas a uma conta percentual.
+func (a *App) setAccountSources(accountID int64, sourceIDs []int64) error {
+	if _, err := db.Exec(`DELETE FROM account_sources WHERE account_id=?`, accountID); err != nil {
+		return err
+	}
+	for _, sid := range sourceIDs {
+		if _, err := db.Exec(`INSERT OR IGNORE INTO account_sources (account_id, source_id) VALUES (?,?)`, accountID, sid); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // CreateAccount cria uma nova conta recorrente.
-func (a *App) CreateAccount(name string, amount float64, dueDay int, groupID *int64, notes string) (Account, error) {
-	res, err := db.Exec(`INSERT INTO accounts (name, amount, due_day, group_id, notes) VALUES (?,?,?,?,?)`,
-		name, amount, dueDay, groupID, notes)
+// accType pode ser "fixed" (amount) ou "percent" (percent + sourceIDs).
+func (a *App) CreateAccount(name string, amount float64, dueDay int, groupID *int64, notes, accType string, percent float64, sourceIDs []int64) (Account, error) {
+	if accType == "" {
+		accType = "fixed"
+	}
+	res, err := db.Exec(`INSERT INTO accounts (name, amount, due_day, group_id, notes, type, percent) VALUES (?,?,?,?,?,?,?)`,
+		name, amount, dueDay, groupID, notes, accType, percent)
 	if err != nil {
 		return Account{}, err
 	}
 	id, _ := res.LastInsertId()
-	return Account{ID: id, Name: name, Amount: amount, DueDay: dueDay, GroupID: groupID, Notes: notes}, nil
+	if err := a.setAccountSources(id, sourceIDs); err != nil {
+		return Account{}, err
+	}
+	return Account{ID: id, Name: name, Amount: amount, DueDay: dueDay, GroupID: groupID,
+		Notes: notes, Type: accType, Percent: percent, SourceIDs: sourceIDs}, nil
 }
 
 // UpdateAccount atualiza uma conta recorrente.
-func (a *App) UpdateAccount(id int64, name string, amount float64, dueDay int, groupID *int64, active bool, notes string) (Account, error) {
+func (a *App) UpdateAccount(id int64, name string, amount float64, dueDay int, groupID *int64, active bool, notes, accType string, percent float64, sourceIDs []int64) (Account, error) {
 	act := 0
 	if active {
 		act = 1
 	}
-	_, err := db.Exec(`UPDATE accounts SET name=?, amount=?, due_day=?, group_id=?, active=?, notes=? WHERE id=?`,
-		name, amount, dueDay, groupID, act, notes, id)
+	if accType == "" {
+		accType = "fixed"
+	}
+	_, err := db.Exec(`UPDATE accounts SET name=?, amount=?, due_day=?, group_id=?, active=?, notes=?, type=?, percent=? WHERE id=?`,
+		name, amount, dueDay, groupID, act, notes, accType, percent, id)
 	if err != nil {
 		return Account{}, err
 	}
-	return Account{ID: id, Name: name, Amount: amount, DueDay: dueDay, GroupID: groupID, Active: active, Notes: notes}, nil
+	if err := a.setAccountSources(id, sourceIDs); err != nil {
+		return Account{}, err
+	}
+	return Account{ID: id, Name: name, Amount: amount, DueDay: dueDay, GroupID: groupID,
+		Active: active, Notes: notes, Type: accType, Percent: percent, SourceIDs: sourceIDs}, nil
 }
 
 // DeleteAccount remove uma conta e, em cascata, seus pagamentos.
 func (a *App) DeleteAccount(id int64) error {
 	_, err := db.Exec(`DELETE FROM accounts WHERE id=?`, id)
 	return err
+}
+
+// GetSuggestedPayment calcula o valor sugerido de pagamento de uma conta no mês.
+// Para contas fixas retorna o valor cadastrado; para contas percentuais retorna
+// Percent% da soma das entradas das fontes vinculadas no mês (0 se não houver entrada).
+func (a *App) GetSuggestedPayment(accountID int64, year, month int) (float64, error) {
+	var typ string
+	var percent, amount float64
+	if err := db.QueryRow(`SELECT type, percent, amount FROM accounts WHERE id=?`, accountID).
+		Scan(&typ, &percent, &amount); err != nil {
+		return 0, err
+	}
+	if typ != "percent" {
+		return amount, nil
+	}
+	var sum float64
+	if err := db.QueryRow(`
+		SELECT COALESCE(SUM(i.amount), 0)
+		FROM incomes i
+		JOIN account_sources as_ ON as_.source_id = i.source_id
+		WHERE as_.account_id=? AND i.year=? AND i.month=?`,
+		accountID, year, month).Scan(&sum); err != nil {
+		return 0, err
+	}
+	return round2(sum * percent / 100), nil
 }
 
 // ---------- Pagamentos ----------

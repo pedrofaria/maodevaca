@@ -31,7 +31,7 @@ func TestFinanceFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acc, err := a.CreateAccount("Aluguel", 1500.0, 5, &g.ID, "")
+	acc, err := a.CreateAccount("Aluguel", 1500.0, 5, &g.ID, "", "fixed", 0, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,5 +138,80 @@ func TestFinanceFlow(t *testing.T) {
 	}
 	if ms3.ExpensesTotal != 0 {
 		t.Fatalf("cascata: %+v", ms3)
+	}
+}
+
+// TestPercentAccount valida conta do tipo percentual: o valor sugerido é o
+// percentual da soma das entradas das fontes vinculadas no mês.
+func TestPercentAccount(t *testing.T) {
+	setupTestDB(t)
+	a := NewApp()
+
+	// Duas fontes e entradas no mês.
+	s1, err := a.CreateIncomeSource("Salário", "i-lucide-briefcase", "#10b981")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2, err := a.CreateIncomeSource("Aluguel", "i-lucide-home", "#6366f1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateIncome(s1.ID, 8000, "2026-08-05", "Salário agosto"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateIncome(s2.ID, 2000, "2026-08-10", "Aluguel recebido"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Conta percentual: 10% de Salário + Aluguel.
+	acc, err := a.CreateAccount("Dízimo", 0, 5, nil, "", "percent", 10, []int64{s1.ID, s2.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if acc.Type != "percent" || acc.Percent != 10 || len(acc.SourceIDs) != 2 {
+		t.Fatalf("conta percentual: %+v", acc)
+	}
+
+	// Valor sugerido = 10% de (8000 + 2000) = 1000.
+	got, err := a.GetSuggestedPayment(acc.ID, 2026, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 1000 {
+		t.Fatalf("valor sugerido: %v (esperado 1000)", got)
+	}
+
+	// Sem entradas no mês, o valor sugerido é 0.
+	got0, err := a.GetSuggestedPayment(acc.ID, 2026, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got0 != 0 {
+		t.Fatalf("valor sugerido sem entradas: %v (esperado 0)", got0)
+	}
+
+	// GetAccounts carrega type/percent/fontes.
+	accs, err := a.GetAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(accs) != 1 || accs[0].Type != "percent" || accs[0].Percent != 10 || len(accs[0].SourceIDs) != 2 {
+		t.Fatalf("GetAccounts percentual: %+v", accs)
+	}
+
+	// Atualizar remove fontes que saíram (deixar só Salário) e muda o percentual.
+	upd, err := a.UpdateAccount(acc.ID, "Dízimo", 0, 5, nil, true, "", "percent", 15, []int64{s1.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upd.Percent != 15 || len(upd.SourceIDs) != 1 {
+		t.Fatalf("update percentual: %+v", upd)
+	}
+	gotUpd, err := a.GetSuggestedPayment(acc.ID, 2026, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotUpd != 1200 { // 15% de 8000
+		t.Fatalf("valor sugerido após update: %v (esperado 1200)", gotUpd)
 	}
 }

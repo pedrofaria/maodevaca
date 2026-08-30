@@ -33,11 +33,13 @@ export const api = {
 
   // Contas
   getAccounts: () => call<Account[]>('GetAccounts'),
-  createAccount: (name: string, amount: number, dueDay: number, groupId: number | null, notes: string) =>
-    call<Account>('CreateAccount', name, amount, dueDay, groupId, notes),
-  updateAccount: (id: number, name: string, amount: number, dueDay: number, groupId: number | null, active: boolean, notes: string) =>
-    call<Account>('UpdateAccount', id, name, amount, dueDay, groupId, active, notes),
+  createAccount: (name: string, amount: number, dueDay: number, groupId: number | null, notes: string, type: 'fixed' | 'percent', percent: number, sourceIds: number[]) =>
+    call<Account>('CreateAccount', name, amount, dueDay, groupId, notes, type, percent, sourceIds),
+  updateAccount: (id: number, name: string, amount: number, dueDay: number, groupId: number | null, active: boolean, notes: string, type: 'fixed' | 'percent', percent: number, sourceIds: number[]) =>
+    call<Account>('UpdateAccount', id, name, amount, dueDay, groupId, active, notes, type, percent, sourceIds),
   deleteAccount: (id: number) => call<void>('DeleteAccount', id),
+  getSuggestedPayment: (accountId: number, year: number, month: number) =>
+    call<number>('GetSuggestedPayment', accountId, year, month),
 
   // Pagamentos
   payAccount: (input: PayAccountInput) => call<Payment>('PayAccount', input),

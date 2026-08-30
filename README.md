@@ -14,7 +14,8 @@ Construído com [Wails](https://wails.io) (Go + WebView2) e [Nuxt UI](https://ui
 ## ✨ Funcionalidades
 
 - **Contas a pagar recorrentes** — cadastre suas despesas fixas (aluguel, condomínio, assinaturas,
-  mercado...) com valor e dia de vencimento, organizadas em **grupos** (Casa, Cabo Frio, Pessoal...)
+  mercado...) organizadas em **grupos** (Casa, Cabo Frio, Pessoal...), com dois **tipos de conta**:
+  **Fixo** (valor e dia de vencimento) ou **Percentual** (valor calculado a partir das entradas)
 - **Pagamentos mês a mês** — marque o que já foi pago no mês, com valor e data reais; desfaça quando
   precisar
 - **Fontes de crédito** — cadastre suas entradas recorrentes (salário, aluguéis) com ícone e cor
@@ -23,6 +24,16 @@ Construído com [Wails](https://wails.io) (Go + WebView2) e [Nuxt UI](https://ui
 - **Relatórios** — visão mensal e anual do fluxo de caixa
 - **Dark mode** 🌙 — tema claro/escuro
 - **100% local** — seus dados nunca saem da sua máquina (SQLite)
+
+### Tipos de conta
+
+Ao criar/editar uma conta você escolhe o **tipo**:
+
+- **Fixo** — valor fixo com dia de vencimento (ex.: aluguel, internet, condomínio).
+- **Percentual** — o valor é calculado automaticamente como uma **porcentagem da soma das
+  entradas** de uma ou mais **fontes** no mês. Ex.: uma conta *Dízimo* com `10%` da fonte
+  *Salário*. Na tela de **Transações**, o app já mostra o valor sugerido do mês e o pré-preenche
+  ao pagar (ajustável antes de confirmar).
 
 ---
 
