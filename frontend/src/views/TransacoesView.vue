@@ -31,6 +31,12 @@ const paidSet = computed(() => new Set(payments.value.map(p => p.accountId)))
 const paidAmount = computed(() => new Map(payments.value.map(p => [p.accountId, p.amount] as const)))
 const paidDate = computed(() => new Map(payments.value.map(p => [p.accountId, p.paidOn] as const)))
 
+// Pagamento marcado com data no futuro: recebe destaque amarelo.
+function isFuturePaid(accountId: number): boolean {
+  const on = paidDate.value.get(accountId)
+  return !!on && on > todayISO()
+}
+
 const activeAccounts = computed(() => accounts.value.filter(a => a.active))
 const inactiveAccounts = computed(() => accounts.value.filter(a => !a.active))
 
@@ -222,7 +228,7 @@ async function confirmRemoveIncome() {
       <section class="space-y-3">
         <div class="rounded-lg bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 px-4 py-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <span class="text-sm font-medium text-red-800 dark:text-red-300">Pagamentos de {{ viewMonth }}/{{ viewYear }}</span>
-          <span class="text-sm text-red-600 dark:text-red-400">{{ paidCount }} {{ paidCount === 1 ? 'paga' : 'pagas' }}</span>
+          <span class="text-sm text-red-600 dark:text-red-400">{{ paidCount }} de {{ activeAccounts.length }} {{ activeAccounts.length === 1 ? 'paga' : 'pagas' }}</span>
           <span class="text-xl font-bold text-red-700 dark:text-red-400 justify-self-end">{{ money(totalPaid) }}</span>
         </div>
 
@@ -239,7 +245,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in groupActiveAccounts(g.id)"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-white border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div
@@ -293,7 +300,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in ungroupedActive"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-white border-neutral-200 dark:bg-neutral-900 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div
@@ -337,7 +345,8 @@ async function confirmRemoveIncome() {
           <div
             v-for="acc in inactiveAccounts"
             :key="acc.id"
-            class="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 opacity-60"
+            class="flex items-center justify-between gap-3 rounded-lg border p-3 opacity-60"
+            :class="isFuturePaid(acc.id) ? 'bg-amber-50 border-amber-200 dark:bg-yellow-500/15 dark:border-yellow-500/40' : 'bg-neutral-50 border-neutral-200 dark:bg-neutral-800/50 dark:border-neutral-800'"
           >
             <div class="flex items-center gap-3 min-w-0">
               <div class="grid place-items-center size-9 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 shrink-0">
