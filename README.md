@@ -1,3 +1,8 @@
+[Support me](https://donatr.ee/pedrofaria)
+
+<!-- GitHub badge -->
+[![Support Pedro Faria](https://img.shields.io/badge/Donate-donatr.ee-6C5CE7?style=for-the-badge)](https://donatr.ee/pedrofaria)
+
 # Mão de Vaca 🐄
 
 **Finanças pessoais direto na sua máquina** — app desktop que acompanha suas contas a pagar
